@@ -1,19 +1,25 @@
 return {
-    "neovim/nvim-lspconfig",
-    event = { "BufReadPre", "BufNewFile" },
-    config = function()
-        local lspconfig = require('lspconfig')
-
-        local on_attach = function(client, bufnr)
-            local opts = { noremap=true, silent=true }
-            vim.api.nvim_buf_set_keymap(bufnr, 'n', 'gd', '<cmd>lua vim.lsp.buf.definition()<CR>', opts)
-            vim.api.nvim_buf_set_keymap(bufnr, 'n', 'K', '<cmd>lua vim.lsp.buf.hover()<CR>', opts)
+    { 
+        "williamboman/mason.nvim",
+        "williamboman/mason-lspconfig.nvim",
+        "neovim/nvim-lspconfig"
+    },
+    { "williamboman/mason.nvim", opts = {
+        opts = function()
+            --require("mason").setup()
+            mason_lspconfig.setup({
+                ensure_installed = {
+                    "java_language_server"
+                }
+            })
+            mason_lspconfig.setup_handlers({
+                function(server_name)
+                    require("lspconfig")[server_name].setup {
+                        on_attach = require("shared").on_attach,
+                    }
+                end
+            })
         end
-
-        -- Setup Marksman language server
-        lspconfig.marksman.setup{
-            on_attach = on_attach,
         }
-    end,
+    }
 }
-
