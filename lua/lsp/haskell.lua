@@ -1,0 +1,5 @@
+-- return {
+-- 	cmd = {"haskell-language-server-wrapper", "--lsp"},
+-- 	root_markers = { ".ghci", "stack.yaml", "cabal.project", "*.cabal", "packagage.yaml", "hie.yaml"},
+-- 	filetypes = { "haskell", "lhs"},
+-- }

@@ -1,0 +1,42 @@
+ -- local lsp_servers = {
+--     haskell = require("haskell")
+-- }
+--
+-- for server, config in pairs(lsp_servers) do
+--     vim.lsp.config[server] = config
+-- end
+--
+-- vim.lsp.enable({
+--     "haskell"
+-- })
+
+-- local M = {}
+--
+-- function M.setup()
+--     local lspconfig = require('lspconfig')
+--     local capabilities = require('cmp_nvim_lsp').default_capabilities()
+--
+--     lspconfig.hls.setup({
+--         capabilities = capabilities,
+--         settings = {
+--             haskell = {
+--
+--             }
+--         }
+--     })
+--
+--     vim.api.nvim_create_autocmd("BufWritePre", {
+--         pattern = {"*.rs"},
+--         callback = function()
+--             vim.lsp.buf.format()
+--         end,
+--     })
+--
+--     vim.keymap.set('n', 'gd', vim.lsp.buf.definition)
+--     vim.keymap.set('n', 'gr', vim.lsp.buf.references)
+--     vim.keymap.set('n', 'K', vim.lsp.buf.hover)
+--     vim.keymap.set('n', '<leader>rn', vim.lsp.buf.rename)
+--     vim.keymap.set('n', '<leader>ca', vim.lsp.buf.code_action)
+-- end
+--
+-- return M
