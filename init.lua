@@ -76,26 +76,103 @@ vim.api.nvim_create_autocmd("LspAttach", {
 
 
 vim.api.nvim_create_user_command("PandocPdf", function()
+    -- adjust this to point at your local Eisvogel template:
+    -- local eisvogel = "C:\\Users\\julia\\pandoc-templates\\eisvogel\\eisvogel.tex"
+    -- local eisvogel = "C:\\Users\\julia\\pandoc-templates\\eisvogel\\eisvogel.tex"
+
     local md  = vim.fn.fnameescape(vim.fn.expand("%"))
     local out = vim.fn.fnameescape(vim.fn.expand("%:r") .. ".pdf")
+
+    -- local tpl      = vim.fn.shellescape(eisvogel)
+
 
     local cmd = table.concat({
         "pandoc",
         md,
         "--from=markdown",
-        "--template=eisvogel",
+        -- "--template=" .. tpl,
+        "--template=eisvogel", -- nu alleen de naam
         "-V fontsize=12pt",
         "-V geometry:margin=1in",
         [[-V mainfont="Roboto Slab"]],
-        -- [[-V header-right="Page \thepage\ of \pageref{LastPage}"]],
         [[-V footer-right="Page \thepage\ of \pageref{LastPage}"]],
         [[-V header-includes="\usepackage{lastpage}"]],
         "-o " .. out,
     }, " ")
 
     print(cmd)
-    vim.fn.jobstart(cmd, { detach = false })
+    vim.fn.jobstart(cmd, {
+        detach = false,
+    })
 end, {
     nargs = 0,
     desc  = "Convert current Markdown to PDF via Pandoc + Eisvogel",
 })
+
+-- vim.api.nvim_create_user_command("OpenPdf", function()
+--     local path = vim.fn.fnameescape(vim.fn.expand("%:r") .. ".pdf")
+--     vim.ui.open(path)
+-- end, {
+--     nargs = 0,
+--     desc = "Open current markdown file as pdf if possible"
+-- })
+
+
+-- vim.api.nvim_create_autocmd("BufWritePost", {
+--     pattern = "*.md",
+--     callback = function()
+--         local filename = vim.fn.expand("%:r") .. ".pdf"
+--         vim.cmd("silent !start " .. filename) -- Use 'xdg-open' on Linux or 'start' on Windows
+--     end
+-- })
+--
+function OpenDocument(path)
+    vim.ui.open(path)
+end
+
+--
+-- vim.api.nvim_create_user_command("PandocPdf", function()
+--     -- 1) figure out input/output paths
+--     local md   = vim.fn.expand("%:p") -- full path to current buffer
+--     local out  = vim.fn.expand("%:p:r") .. ".pdf"
+--
+--     -- 2) build the pandoc argument list
+--     local args = {
+--         "pandoc",
+--         md,
+--         "--from=markdown",
+--         "--template=eisvogel", -- assumes eisvogel is in your PATH or ~/.pandoc/templates
+--         "-V", "fontsize=12pt",
+--         "-V", "geometry:margin=1in",
+--         "-V", [[mainfont="Roboto Slab"]],
+--         "-V", [[header-right="Page \thepage\ of \pageref{LastPage}"]],
+--         "-V", [[footer-center="Page \thepage\ of \pageref{LastPage}"]],
+--         "-V", [[header-includes=\usepackage{lastpage}]],
+--         "-o", out,
+--     }
+--
+--     vim.fn.jobstart(args, {
+--         stdout_buffered = true,
+--         stderr_buffered = true,
+--         -- on_exit will fire when pandoc is done
+--         on_exit = vim.schedule_wrap(function(job_id, exit_code, event_type)
+--             if exit_code == 0 then
+--                 -- success! open (or reload) in SumatraPDF
+--                 -- "-reuse-instance" tells Sumatra to reuse the same window
+--                 vim.fn.jobstart({
+--                     "SumatraPDF",
+--                     "-reuse-instance",
+--                     out
+--                 }, { detach = true })
+--             else
+--                 -- error: fetch stderr and show it
+--                 local err = vim.fn.jobgetstderr(job_id)
+--                 vim.notify("PandocPdf failed:\n" .. table.concat(err, "\n"),
+--                     vim.log.levels.ERROR)
+--             end
+--         end)
+--     })
+-- end, {
+--     nargs = 0,
+--     desc  = "Convert current Markdown to PDF via Pandoc + Eisvogel (async, reload Sumatra)",
+-- })
