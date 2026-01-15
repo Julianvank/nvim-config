@@ -31,7 +31,7 @@ require("lazy").setup({
     },
     -- Configure any other settings here. See the documentation for more details.
     -- colorscheme that will be used when installing plugins.
-    install = { colorscheme = { "bamboo" } },
+    -- install = { colorscheme = { "bamboo" } },
     -- automatically check for plugin updates
     checker = { enabled = true },
 })
@@ -58,7 +58,7 @@ end, { silent = true })
 vim.keymap.set("i", "<Tab>", function()
     if vim.fn.pumvisible() == 1 then
         return vim.api.nvim_replace_termcodes("<C-n>", true, false, true)
-    else 
+    else
         return vim.api.nvim_replace_termcodes("<Tab>", true, false, true)
     end
 end, { expr = true, silent = true })
