@@ -58,121 +58,98 @@ vim.api.nvim_create_autocmd("LspAttach", {
 })
 
 
--- Path to your local copy of the Eisvogel template
--- local eisvogel_template = vim.fn.expand("~/pandoc-templates/eisvogel/eisvogel.tex")
-
--- Register the PandocPdf command
--- vim.api.nvim_create_user_command("PandocPdf", function(args)
---     vim.cmd(
---         "!pandoc -i "
---         .. vim.fn.fnameescape(vim.fn.expand("%"))
---         .. " -o "
---         .. vim.fn.fnameescape(vim.fn.expand("%:r"))
---         .. ".pdf"
---     )
--- end, {
---     nargs = 1,
--- })
-
-
 vim.api.nvim_create_user_command("PandocPdf", function()
-    -- adjust this to point at your local Eisvogel template:
-    -- local eisvogel = "C:\\Users\\julia\\pandoc-templates\\eisvogel\\eisvogel.tex"
-    -- local eisvogel = "C:\\Users\\julia\\pandoc-templates\\eisvogel\\eisvogel.tex"
+    local md  = vim.fn.expand("%:p")
+    local out = vim.fn.expand("%:p:r") .. ".pdf"
+    local log = vim.fn.expand("%:p:r") .. ".pandoc.log"
 
-    local md  = vim.fn.fnameescape(vim.fn.expand("%"))
-    local out = vim.fn.fnameescape(vim.fn.expand("%:r") .. ".pdf")
+    -- Create a temporary header.tex to avoid complex escaping of LaTeX in -V
+    local header_tex = vim.fn.expand("%:p:r") .. ".header.tex"
+    local header_contents = table.concat({
+        "\\usepackage{lastpage}",
+        "\\usepackage{listings}",
+        "\\usepackage{float}",
+        "\\renewcommand{\\lstlistingname}{Code}",
+        "\\lstset{numbers=left,numberstyle=\\tiny,captionpos=b,float}"
+    }, "\n")
+    local hf = io.open(header_tex, "w")
+    if not hf then
+        vim.notify("Failed to write header tex: " .. header_tex, vim.log.levels.ERROR)
+        return
+    end
+    hf:write(header_contents)
+    hf:close()
 
-    -- local tpl      = vim.fn.shellescape(eisvogel)
-
-
-    local cmd = table.concat({
+    local args = {
         "pandoc",
         md,
         "--from=markdown",
-        -- "--template=" .. tpl,
-        "--template=eisvogel", -- nu alleen de naam
-        "-V fontsize=12pt",
-        "-V geometry:margin=1in",
-        [[-V mainfont="Roboto Slab"]],
-        [[-V footer-right="Page \thepage\ of \pageref{LastPage}"]],
-        [[-V header-includes="\usepackage{lastpage}"]],
-        "-o " .. out,
-    }, " ")
+        "--template=eisvogel",
+        "--syntax-highlighting=idiomatic",
+        "-V", "fontsize=12pt",
+        "-V", "geometry:margin=1in",
+        "-V", 'mainfont=Roboto Slab',
+        -- footer-right needs the LaTeX commands verbatim; pass as a single arg
+        "-V", [[footer-right=Page \thepage\ of \pageref{LastPage}]],
+        -- use -H to include the header tex file
+        "-H", header_tex,
+        "-o", out,
+    }
 
-    print(cmd)
-    vim.fn.jobstart(cmd, {
+    -- Print command for quick debugging (safe: shows args joined by spaces)
+    print(table.concat(args, " "))
+
+    local stdout_lines = {}
+    local stderr_lines = {}
+
+    vim.fn.jobstart(args, {
         detach = false,
+        stdout_buffered = true,
+        stderr_buffered = true,
+        on_stdout = function(_, data, _)
+            if data then
+                for _, line in ipairs(data) do
+                    if line ~= "" then table.insert(stdout_lines, line) end
+                end
+            end
+        end,
+        on_stderr = function(_, data, _)
+            if data then
+                for _, line in ipairs(data) do
+                    if line ~= "" then table.insert(stderr_lines, line) end
+                end
+            end
+        end,
+        on_exit = vim.schedule_wrap(function(_, code, _)
+            local f = io.open(log, "w")
+            if f then
+                f:write("pandoc command:\n", table.concat(args, " "), "\n\n")
+                f:write("exit code: ", tostring(code), "\n\n")
+                if #stdout_lines > 0 then
+                    f:write("=== STDOUT ===\n", table.concat(stdout_lines, "\n"), "\n\n")
+                end
+                if #stderr_lines > 0 then
+                    f:write("=== STDERR ===\n", table.concat(stderr_lines, "\n"), "\n\n")
+                end
+                f:close()
+                vim.notify("Pandoc log written to: " .. log, vim.log.levels.INFO)
+            else
+                vim.notify("Failed to open log file: " .. log, vim.log.levels.ERROR)
+            end
+
+            if code == 0 then
+                vim.notify("PandocPdf succeeded: " .. out, vim.log.levels.INFO)
+            else
+                vim.notify("PandocPdf failed (exit code " .. tostring(code) .. "), see " .. log, vim.log.levels.ERROR)
+            end
+        end),
     })
 end, {
     nargs = 0,
     desc  = "Convert current Markdown to PDF via Pandoc + Eisvogel",
 })
 
--- vim.api.nvim_create_user_command("OpenPdf", function()
---     local path = vim.fn.fnameescape(vim.fn.expand("%:r") .. ".pdf")
---     vim.ui.open(path)
--- end, {
---     nargs = 0,
---     desc = "Open current markdown file as pdf if possible"
--- })
-
-
--- vim.api.nvim_create_autocmd("BufWritePost", {
---     pattern = "*.md",
---     callback = function()
---         local filename = vim.fn.expand("%:r") .. ".pdf"
---         vim.cmd("silent !start " .. filename) -- Use 'xdg-open' on Linux or 'start' on Windows
---     end
--- })
---
 function OpenDocument(path)
     vim.ui.open(path)
 end
 
---
--- vim.api.nvim_create_user_command("PandocPdf", function()
---     -- 1) figure out input/output paths
---     local md   = vim.fn.expand("%:p") -- full path to current buffer
---     local out  = vim.fn.expand("%:p:r") .. ".pdf"
---
---     -- 2) build the pandoc argument list
---     local args = {
---         "pandoc",
---         md,
---         "--from=markdown",
---         "--template=eisvogel", -- assumes eisvogel is in your PATH or ~/.pandoc/templates
---         "-V", "fontsize=12pt",
---         "-V", "geometry:margin=1in",
---         "-V", [[mainfont="Roboto Slab"]],
---         "-V", [[header-right="Page \thepage\ of \pageref{LastPage}"]],
---         "-V", [[footer-center="Page \thepage\ of \pageref{LastPage}"]],
---         "-V", [[header-includes=\usepackage{lastpage}]],
---         "-o", out,
---     }
---
---     vim.fn.jobstart(args, {
---         stdout_buffered = true,
---         stderr_buffered = true,
---         -- on_exit will fire when pandoc is done
---         on_exit = vim.schedule_wrap(function(job_id, exit_code, event_type)
---             if exit_code == 0 then
---                 -- success! open (or reload) in SumatraPDF
---                 -- "-reuse-instance" tells Sumatra to reuse the same window
---                 vim.fn.jobstart({
---                     "SumatraPDF",
---                     "-reuse-instance",
---                     out
---                 }, { detach = true })
---             else
---                 -- error: fetch stderr and show it
---                 local err = vim.fn.jobgetstderr(job_id)
---                 vim.notify("PandocPdf failed:\n" .. table.concat(err, "\n"),
---                     vim.log.levels.ERROR)
---             end
---         end)
---     })
--- end, {
---     nargs = 0,
---     desc  = "Convert current Markdown to PDF via Pandoc + Eisvogel (async, reload Sumatra)",
--- })
